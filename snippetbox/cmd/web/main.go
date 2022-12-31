@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"log"
 	"net/http"
@@ -14,27 +15,24 @@ type application struct {
 }
 
 func main() {
-	// add 'addr' as cmd line flag, default value of ':4000
-	// flag.Int(), flag.Bool()...auto convert flag value to type
 	addr := flag.String("addr", ":4000", "HTTP network address")
-
+	// Define a new command-line flag for MySQL DSN string
+	dsn := flag.String("dsn", "web:password@/snippetbox?parseTime=true", "MySQL data source name")
 	// parse cmd line flags and assign to addr variable.
-	// must be called BEFORE using addr variable or else will contain default ':4000'
 	flag.Parse()
 
-	// create a new logger with custom prefix that writes to stdout
-	// includes local date and time
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	// use log.Lshortfile to incl relevant file name and line number
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	// Pass in the DSN from command line flag
+	db, err := openDB(*dsn)
+	// close connection pool before main() function exits.
+	defer db.Close()
 
-	// Initialize a new instance of application struct with dependencies injected
 	app := &application{
 		infoLog:  infoLog,
 		errorLog: errorLog,
 	}
 
-	// initialize new http.Server struct and pass in our custom error logger
 	srv := &http.Server{
 		Addr:     *addr,
 		ErrorLog: errorLog,
@@ -42,6 +40,19 @@ func main() {
 	}
 	infoLog.Printf("Starting server on %s", *addr)
 	// call ListenAndServe() method on new http.Server struct
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	errorLog.Fatal(err)
+}
+
+// openDB() function wraps sql.Open() and returns a sql.DB connection pool for a given DSN
+func openDB(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+	// create a connection and check for any errors
+	if err = db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
