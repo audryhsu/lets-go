@@ -3,15 +3,18 @@ package main
 import (
 	"database/sql"
 	"flag"
+	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"net/http"
 	"os"
+	"snippetbox.audryhsu.com/internal/models"
 )
 
 // Define an application struct to hold app-wide dependencies.
 type application struct {
 	errorLog *log.Logger
 	infoLog  *log.Logger
+	snippets *models.SnippetModel // now model is available to handlers
 }
 
 func main() {
@@ -25,12 +28,16 @@ func main() {
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 	// Pass in the DSN from command line flag
 	db, err := openDB(*dsn)
+	if err != nil {
+		errorLog.Fatal(err)
+	}
+
 	// close connection pool before main() function exits.
 	defer db.Close()
-
 	app := &application{
 		infoLog:  infoLog,
 		errorLog: errorLog,
+		snippets: &models.SnippetModel{DB: db}, // initialize a SnippetModel instance
 	}
 
 	srv := &http.Server{
