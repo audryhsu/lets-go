@@ -22,29 +22,8 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	for _, snippet := range snippets {
-		fmt.Fprintf(w, "%+v\n", snippet)
-	}
-	//// Initialize a slice containing path to two files, base file first.
-	//files := []string{
-	//	"./ui/html/base.html",
-	//	"./ui/html/partials/nav.html",
-	//	"./ui/html/pages/home.html",
-	//}
-	//// read template files into a template set. If error, log detailed error message.
-	//ts, err := template.ParseFiles(files...)
-	//if err != nil {
-	//	// home handler is a method against application, it can access struct's fileds
-	//	app.serverError(w, err)
-	//	return
-	//}
-	//
-	//// Write the template content of "base" as response body
-	//err = ts.ExecuteTemplate(w, "base", nil)
-	//if err != nil {
-	//	app.serverError(w, err)
-	//	return
-	//}
+	// render template passing in templateData of latest snippets
+	app.render(w, http.StatusOK, "home.html", &templateData{Snippets: snippets})
 }
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
@@ -62,8 +41,8 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// Write the snippet data as plain-text HTTP response body
-	_, _ = fmt.Fprintf(w, "%+v", snippet)
+	// render an instance of templateData struct holding snippet data
+	app.render(w, http.StatusOK, "view.html", &templateData{Snippet: snippet})
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {

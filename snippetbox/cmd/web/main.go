@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	_ "github.com/go-sql-driver/mysql"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -12,9 +13,10 @@ import (
 
 // Define an application struct to hold app-wide dependencies.
 type application struct {
-	errorLog *log.Logger
-	infoLog  *log.Logger
-	snippets *models.SnippetModel // now model is available to handlers
+	errorLog      *log.Logger
+	infoLog       *log.Logger
+	snippets      *models.SnippetModel // now model is available to handlers
+	templateCache map[string]*template.Template
 }
 
 func main() {
@@ -34,10 +36,17 @@ func main() {
 
 	// close connection pool before main() function exits.
 	defer db.Close()
+
+	// initialize new template cache to add to app dependencies
+	templateCache, err := NewTemplateCache()
+	if err != nil {
+		errorLog.Fatal(err)
+	}
 	app := &application{
-		infoLog:  infoLog,
-		errorLog: errorLog,
-		snippets: &models.SnippetModel{DB: db}, // initialize a SnippetModel instance
+		infoLog:       infoLog,
+		errorLog:      errorLog,
+		snippets:      &models.SnippetModel{DB: db}, // initialize a SnippetModel instance
+		templateCache: templateCache,
 	}
 
 	srv := &http.Server{
