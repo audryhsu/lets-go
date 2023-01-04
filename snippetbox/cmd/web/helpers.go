@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"runtime/debug"
+	"time"
 )
 
 // Logs the stack trace using errorLog and responds with a 500 Internal Server error
@@ -35,13 +37,24 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 		app.serverError(w, err)
 		return
 	}
-	// Write out provided HTTP status code
-	w.WriteHeader(status)
-
-	// Execute template set and write the response body.
-	err := ts.ExecuteTemplate(w, "base", data)
+	// Write template to a buffer first to check for error.
+	buf := new(bytes.Buffer)
+	err := ts.ExecuteTemplate(buf, "base", data)
 	if err != nil {
 		app.serverError(w, err)
+		return
+	}
+
+	// Safe to write to http.ResponseWriter if template is written to buffer w/o errors
+	w.WriteHeader(status)
+
+	// Write contents of buffer to http.ResponseWriter using WriteTo, which takes an io.Writer
+	buf.WriteTo(w)
+}
+
+func (app *application) NewTemplateData() *templateData {
+	return &templateData{
+		CurrentYear: time.Now().Year(),
 	}
 
 }

@@ -22,8 +22,10 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
+	data := app.NewTemplateData()
+	data.Snippets = snippets
 	// render template passing in templateData of latest snippets
-	app.render(w, http.StatusOK, "home.html", &templateData{Snippets: snippets})
+	app.render(w, http.StatusOK, "home.html", data)
 }
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
@@ -41,8 +43,10 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	data := app.NewTemplateData()
+	data.Snippet = snippet
 	// render an instance of templateData struct holding snippet data
-	app.render(w, http.StatusOK, "view.html", &templateData{Snippet: snippet})
+	app.render(w, http.StatusOK, "view.html", data)
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
