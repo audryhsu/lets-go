@@ -28,6 +28,11 @@ func (app *application) notFound(w http.ResponseWriter) {
 	app.clientError(w, http.StatusNotFound)
 }
 
+// methodNotAllowed helper is a convenience wrapper around clientError which sends 404 Not Found to user.
+func (app *application) methodNotAllowed(w http.ResponseWriter) {
+	app.clientError(w, http.StatusMethodNotAllowed)
+}
+
 // render method will retrieve appropriate template set from cache based on page (e.g. home.html)
 // If no entry exists in cache with name, create a new error and call serverError()
 func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {

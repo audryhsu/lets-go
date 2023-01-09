@@ -4,8 +4,8 @@
 <table> <tr>
 </tr>
     {{range .Snippets}} <tr>
-        <td><a href='/snippet/view?id={{.ID}}'>{{.Title}}</a></td>
-<!--        Use custom template function to preptty print date -->
+        <td><a href='/snippet/view/{{.ID}}'>{{.Title}}</a></td>
+<!--        Use custom template function to pretty print date -->
         <td>{{humanDate .Created}}</td>
         <td>#{{.ID}}</td>
     </tr>

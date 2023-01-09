@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/julienschmidt/httprouter"
 	"snippetbox.audryhsu.com/internal/models"
 
 	// "log"
@@ -12,11 +13,6 @@ import (
 
 // Change signature of home handler as a method against *application.
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		app.notFound(w)
-		return
-	}
-
 	snippets, err := app.snippets.Latest()
 	if err != nil {
 		app.serverError(w, err)
@@ -28,7 +24,11 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "home.html", data)
 }
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	// httprouter stores named parameters in request context.
+	params := httprouter.ParamsFromContext(r.Context())
+
+	// use ByName() method to get value of "id" named param from slice and validate
+	id, err := strconv.Atoi(params.ByName("id"))
 	if err != nil || id < 1 {
 		app.notFound(w)
 		return
@@ -49,12 +49,7 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "view.html", data)
 }
 
-func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
+func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
 	title, content, expires := "0 snail", "0 snail\nClimb Mount Fuji,\nBut slowly,!\n\n -Kobayashi Issa", 7
 
 	id, err := app.snippets.Insert(title, content, expires)
@@ -62,5 +57,11 @@ func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("/snippet/view?id=%d", id), http.StatusSeeOther)
+	// use clean URL format in redirects
+	http.Redirect(w, r, fmt.Sprintf("/snippet/view/:id", id), http.StatusSeeOther)
+}
+
+// snippetCreate handles GET requests and returns form to create snippets.
+func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Dsiplay form for creating a new snippet..."))
 }
