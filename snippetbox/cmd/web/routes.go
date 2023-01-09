@@ -2,8 +2,9 @@ package main
 
 import "net/http"
 
+// Update signature of routes() method so it returns a http.Handler instead of *http.ServeMux
 // The routes() method returns a servemux containing the application router.
-func (app *application) routes() *http.ServeMux {
+func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Create a file server to serve files out of "./ui/static".
@@ -18,5 +19,9 @@ func (app *application) routes() *http.ServeMux {
 	mux.HandleFunc("/", app.home)
 	mux.HandleFunc("/snippet/view", app.snippetView)
 	mux.HandleFunc("/snippet/create", app.snippetCreate)
-	return mux
+
+	// Wrap servemux with our middleware.
+	// Last middleware func will call mux as the next middleware.
+	// this is possible because our middleware takes a http.Handler. servemux implements the http.Handler interface because it has a ServeHttp() method.
+	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }

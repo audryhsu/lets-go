@@ -23,6 +23,7 @@ func main() {
 	addr := flag.String("addr", ":4000", "HTTP network address")
 	// Define a new command-line flag for MySQL DSN string
 	dsn := flag.String("dsn", "web:password@/snippetbox?parseTime=true", "MySQL data source name")
+
 	// parse cmd line flags and assign to addr variable.
 	flag.Parse()
 
@@ -36,7 +37,6 @@ func main() {
 
 	// close connection pool before main() function exits.
 	defer db.Close()
-
 	// initialize new template cache to add to app dependencies
 	templateCache, err := NewTemplateCache()
 	if err != nil {
