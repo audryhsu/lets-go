@@ -1,6 +1,9 @@
 package main
 
-import "net/http"
+import (
+	"github.com/justinas/alice"
+	"net/http"
+)
 
 // Update signature of routes() method so it returns a http.Handler instead of *http.ServeMux
 // The routes() method returns a servemux containing the application router.
@@ -20,8 +23,9 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/snippet/view", app.snippetView)
 	mux.HandleFunc("/snippet/create", app.snippetCreate)
 
-	// Wrap servemux with our middleware.
-	// Last middleware func will call mux as the next middleware.
-	// this is possible because our middleware takes a http.Handler. servemux implements the http.Handler interface because it has a ServeHttp() method.
-	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
+	// Create middleware chain containing 'standard' middleware, which is used for every request our app receives
+	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
+
+	// Return 'standard' middleware chain, followed by servemux
+	return standard.Then(mux)
 }
