@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"snippetbox.audryhsu.com/internal/models"
+	"strings"
+	"unicode/utf8"
 
 	// "log"
 	"net/http"
@@ -18,13 +20,13 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	data := app.NewTemplateData()
+	data := app.NewTemplateData(r)
 	data.Snippets = snippets
-	// render template passing in templateData of latest snippets
+	// render template passing in templateData of the latest snippets
 	app.render(w, http.StatusOK, "home.html", data)
 }
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
-	// httprouter stores named parameters in request context.
+	// http-router stores named parameters in request context.
 	params := httprouter.ParamsFromContext(r.Context())
 
 	// use ByName() method to get value of "id" named param from slice and validate
@@ -43,25 +45,76 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	data := app.NewTemplateData()
+	data := app.NewTemplateData(r)
 	data.Snippet = snippet
 	// render an instance of templateData struct holding snippet data
 	app.render(w, http.StatusOK, "view.html", data)
 }
 
-func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	title, content, expires := "0 snail", "0 snail\nClimb Mount Fuji,\nBut slowly,!\n\n -Kobayashi Issa", 7
+type snippetCreateForm struct {
+	Title       string
+	Content     string
+	Expires     int
+	FieldErrors map[string]string
+}
 
-	id, err := app.snippets.Insert(title, content, expires)
+func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
+	// Parse request body to check it is well-formed, and if so, stores form data in r.PostForm map.
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+	expires, err := strconv.Atoi(r.PostFormValue("expires"))
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	// Create an instance of snippetCreateForm containing values from form and empty map for validation errors
+	form := snippetCreateForm{
+		Title:       r.PostFormValue("title"),
+		Content:     r.PostFormValue("content"),
+		Expires:     expires,
+		FieldErrors: map[string]string{},
+	}
+
+	if strings.TrimSpace(form.Title) == "" {
+		form.FieldErrors["title"] = "This field cannot be blank"
+	} else if utf8.RuneCountInString(form.Title) > 100 { // RuneCountInString counts characters; len(s) counts bytes
+		form.FieldErrors["title"] = "This field cannot be more than 100 characters long"
+	}
+	if strings.TrimSpace(form.Content) == "" {
+		form.FieldErrors["content"] = "This field cannot be blank"
+	}
+	permittedValue := expires == 1 || expires == 7 || expires == 365
+	if !permittedValue {
+		form.FieldErrors["expires"] = "This field must equal 1, 7, or 365"
+	}
+
+	if len(form.FieldErrors) > 0 {
+		data := app.NewTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "create.html", data)
+		return
+	}
+
+	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 	// use clean URL format in redirects
-	http.Redirect(w, r, fmt.Sprintf("/snippet/view/:id", id), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
 
-// snippetCreate handles GET requests and returns form to create snippets.
-func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Dsiplay form for creating a new snippet..."))
+// snippetCreateForm handles GET requests and renders HTML form to create snippets.
+func (app *application) snippetCreateForm(w http.ResponseWriter, r *http.Request) {
+	data := app.NewTemplateData(r)
+
+	// Initialize a new snippetCreateForm instance and pass to template
+	// Without initializing the form field, the server will error out bc template cannot render nil as .Form in HTML
+	data.Form = snippetCreateForm{Expires: 365}
+
+	app.render(w, http.StatusOK, "create.html", data)
 }

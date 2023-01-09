@@ -28,7 +28,7 @@ func (app *application) routes() http.Handler {
 	// httprouter package provides method-based routing, clean URLs, and more robust pattern-matching.
 	router.HandlerFunc(http.MethodGet, "/", app.home)
 	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.snippetView)
-	router.HandlerFunc(http.MethodGet, "/snippet/create", app.snippetCreate)
+	router.HandlerFunc(http.MethodGet, "/snippet/create", app.snippetCreateForm)
 	router.HandlerFunc(http.MethodPost, "/snippet/create", app.snippetCreatePost)
 
 	// Create middleware chain containing 'standard' middleware, which is used for every request our app receives
