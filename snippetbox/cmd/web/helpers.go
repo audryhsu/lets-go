@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"github.com/go-playground/form/v4"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -61,5 +63,25 @@ func (app *application) NewTemplateData(r *http.Request) *templateData {
 	return &templateData{
 		CurrentYear: time.Now().Year(),
 	}
+}
 
+func (app *application) decodePostForm(r *http.Request, dest any) error {
+	// Parse request body to check it is well-formed, and if so, stores form data in r.PostForm map.
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+
+	// call Decode() on decoder instance, passing the target destination as the first parameter
+	if err := app.formDecoder.Decode(dest, r.PostForm); err != nil {
+		// If we try to use an invalid target destination, Decode() method will return an error with the type *form.InvalidDecoderError. Use errors.As() to check for this specific error and panic instead of returning error.
+		// why? if we pass something that isn't a non-nil pointer, this is a problem with our app code, not the user input, so we should handle this differently than returning 400.
+		var invalidDecoderError *form.InvalidDecoderError
+		if errors.As(err, &invalidDecoderError) {
+			panic(err)
+		}
+		// return err for all other types
+		return err
+	}
+	return nil
 }

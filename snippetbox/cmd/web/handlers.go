@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"snippetbox.audryhsu.com/internal/models"
-	"strings"
-	"unicode/utf8"
-
+	"snippetbox.audryhsu.com/internal/validator"
 	// "log"
 	"net/http"
 	"strconv"
@@ -52,47 +50,26 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 type snippetCreateForm struct {
-	Title       string
-	Content     string
-	Expires     int
-	FieldErrors map[string]string
+	Title               string `form:"title"`
+	Content             string `form:"content"`
+	Expires             int    `form:"expires"`
+	validator.Validator `form:"-"` // anonymous Validator type; "-" means ignore field during decoding
 }
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	// Parse request body to check it is well-formed, and if so, stores form data in r.PostForm map.
-	err := r.ParseForm()
-	if err != nil {
+	var form snippetCreateForm
+
+	if err := app.decodePostForm(r, form); err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
-	expires, err := strconv.Atoi(r.PostFormValue("expires"))
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
 
-	// Create an instance of snippetCreateForm containing values from form and empty map for validation errors
-	form := snippetCreateForm{
-		Title:       r.PostFormValue("title"),
-		Content:     r.PostFormValue("content"),
-		Expires:     expires,
-		FieldErrors: map[string]string{},
-	}
+	form.CheckField(form.NotBlank(form.Title), "title", "This field cannot be blank")
+	form.CheckField(form.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
+	form.CheckField(form.NotBlank(form.Content), "content", "This field cannot be blank")
+	form.CheckField(form.PermittedInt(form.Expires, 1, 7, 365), "expires", "This field must equal 1,7, or 365")
 
-	if strings.TrimSpace(form.Title) == "" {
-		form.FieldErrors["title"] = "This field cannot be blank"
-	} else if utf8.RuneCountInString(form.Title) > 100 { // RuneCountInString counts characters; len(s) counts bytes
-		form.FieldErrors["title"] = "This field cannot be more than 100 characters long"
-	}
-	if strings.TrimSpace(form.Content) == "" {
-		form.FieldErrors["content"] = "This field cannot be blank"
-	}
-	permittedValue := expires == 1 || expires == 7 || expires == 365
-	if !permittedValue {
-		form.FieldErrors["expires"] = "This field must equal 1, 7, or 365"
-	}
-
-	if len(form.FieldErrors) > 0 {
+	if !form.Valid() {
 		data := app.NewTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "create.html", data)
