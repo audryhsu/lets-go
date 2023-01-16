@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"github.com/alexedwards/scs/mysqlstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
 	"html/template"
@@ -10,15 +12,17 @@ import (
 	"net/http"
 	"os"
 	"snippetbox.audryhsu.com/internal/models"
+	"time"
 )
 
 // Define an application struct to hold app-wide dependencies.
 type application struct {
-	errorLog      *log.Logger
-	infoLog       *log.Logger
-	snippets      *models.SnippetModel // now model is available to handlers
-	templateCache map[string]*template.Template
-	formDecoder   *form.Decoder
+	errorLog       *log.Logger
+	infoLog        *log.Logger
+	snippets       *models.SnippetModel // now model is available to handlers
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
 }
 
 func main() {
@@ -48,12 +52,19 @@ func main() {
 	// create an instance of form decoder and inject as app dependency
 	formDecoder := form.NewDecoder()
 
+	// initialize a new session manager and configure it to use our MySQL db as session store
+	// set lifetime of 12 hours (automatic expiry)
+	sessionManager := scs.New()
+	sessionManager.Store = mysqlstore.New(db)
+	sessionManager.Lifetime = 12 * time.Hour
+
 	app := &application{
-		infoLog:       infoLog,
-		errorLog:      errorLog,
-		snippets:      &models.SnippetModel{DB: db}, // initialize a SnippetModel instance
-		templateCache: templateCache,
-		formDecoder:   formDecoder,
+		infoLog:        infoLog,
+		errorLog:       errorLog,
+		snippets:       &models.SnippetModel{DB: db}, // initialize a SnippetModel instance
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
 	}
 
 	srv := &http.Server{

@@ -25,11 +25,15 @@ func (app *application) routes() http.Handler {
 
 	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
 
+	// Create new middleware chain for middleware specifgic to dynamic app routes.
+	dynamic := alice.New(app.sessionManager.LoadAndSave)
+
 	// httprouter package provides method-based routing, clean URLs, and more robust pattern-matching.
-	router.HandlerFunc(http.MethodGet, "/", app.home)
-	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.snippetView)
-	router.HandlerFunc(http.MethodGet, "/snippet/create", app.snippetCreateForm)
-	router.HandlerFunc(http.MethodPost, "/snippet/create", app.snippetCreatePost)
+	// alice ThenFunc() returns http.Handler (instead http.HandlerFunc), so switch to registering the route using router.Handler()
+	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
+	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippetView))
+	router.Handler(http.MethodGet, "/snippet/create", dynamic.ThenFunc(app.snippetCreateForm))
+	router.Handler(http.MethodPost, "/snippet/create", dynamic.ThenFunc(app.snippetCreatePost))
 
 	// Create middleware chain containing 'standard' middleware, which is used for every request our app receives
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
