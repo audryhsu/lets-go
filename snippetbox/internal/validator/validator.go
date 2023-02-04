@@ -33,7 +33,7 @@ func (v *Validator) CheckField(ok bool, key, message string) {
 
 // NotBlank returns true if a value is not an empty string
 func (v *Validator) NotBlank(value string) bool {
-	return strings.TrimSpace(value) == ""
+	return strings.TrimSpace(value) != ""
 }
 
 // MaxChars returns true if a value contains no more than n chars

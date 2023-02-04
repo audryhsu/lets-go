@@ -43,11 +43,8 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// retrieve the value for the key "flash" from session store. This deletes key and value. If no matching key, returns an empty string.
-	flash := app.sessionManager.PopString(r.Context(), "flash")
 	data := app.NewTemplateData(r)
 	data.Snippet = snippet
-	data.Flash = flash // pass flash message to template
 
 	// render an instance of templateData struct holding snippet data
 	app.render(w, http.StatusOK, "view.html", data)
