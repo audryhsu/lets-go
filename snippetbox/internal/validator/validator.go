@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -8,6 +9,8 @@ import (
 type Validator struct {
 	FieldErrors map[string]string
 }
+
+var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/")
 
 // Valid returns true if FieldErrors map doesn't contain any entries
 func (v *Validator) Valid() bool {
@@ -37,7 +40,7 @@ func (v *Validator) NotBlank(value string) bool {
 }
 
 // MaxChars returns true if a value contains no more than n chars
-func (v Validator) MaxChars(value string, n int) bool {
+func (v *Validator) MaxChars(value string, n int) bool {
 	return utf8.RuneCountInString(value) <= n
 }
 
@@ -49,4 +52,14 @@ func (v *Validator) PermittedInt(value int, permittedValues ...int) bool {
 		}
 	}
 	return false
+}
+
+// MinChars returns true if value is at least n characters
+func (v *Validator) MinChars(value string, n int) bool {
+	return utf8.RuneCountInString(value) >= n
+}
+
+// Matches returns true if value matches email regex pattern
+func (v *Validator) Matches(value string, rx *regexp.Regexp) bool {
+	return rx.MatchString(value)
 }

@@ -20,6 +20,7 @@ type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger
 	snippets       *models.SnippetModel // inject SnippetModel in app to make available to handlers
+	users          *models.UserModel    // inject UserModel to make available to handlers
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
@@ -62,6 +63,7 @@ func main() {
 		infoLog:        infoLog,
 		errorLog:       errorLog,
 		snippets:       &models.SnippetModel{DB: db}, // initialize a SnippetModel instance
+		users:          &models.UserModel{DB: db},    // initialize a UserModel instance
 		templateCache:  templateCache,
 		formDecoder:    formDecoder,
 		sessionManager: sessionManager,
