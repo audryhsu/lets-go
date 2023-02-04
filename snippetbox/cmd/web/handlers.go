@@ -43,23 +43,27 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	// retrieve the value for the key "flash" from session store. This deletes key and value. If no matching key, returns an empty string.
+	flash := app.sessionManager.PopString(r.Context(), "flash")
 	data := app.NewTemplateData(r)
 	data.Snippet = snippet
+	data.Flash = flash // pass flash message to template
+
 	// render an instance of templateData struct holding snippet data
 	app.render(w, http.StatusOK, "view.html", data)
 }
 
 type snippetCreateForm struct {
-	Title               string `form:"title"`
-	Content             string `form:"content"`
-	Expires             int    `form:"expires"`
+	Title               string     `form:"title"`
+	Content             string     `form:"content"`
+	Expires             int        `form:"expires"`
 	validator.Validator `form:"-"` // anonymous Validator type; "-" means ignore field during decoding
 }
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
 	var form snippetCreateForm
 
-	if err := app.decodePostForm(r, form); err != nil {
+	if err := app.decodePostForm(r, &form); err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
@@ -81,6 +85,9 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		app.serverError(w, err)
 		return
 	}
+
+	// use Put() method to add key/value pair to session data.
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 	// use clean URL format in redirects
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }

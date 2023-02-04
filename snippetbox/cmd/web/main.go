@@ -19,7 +19,7 @@ import (
 type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger
-	snippets       *models.SnippetModel // now model is available to handlers
+	snippets       *models.SnippetModel // inject SnippetModel in app to make available to handlers
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager

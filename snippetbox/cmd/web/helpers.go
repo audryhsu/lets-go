@@ -78,6 +78,7 @@ func (app *application) decodePostForm(r *http.Request, dest any) error {
 		// why? if we pass something that isn't a non-nil pointer, this is a problem with our app code, not the user input, so we should handle this differently than returning 400.
 		var invalidDecoderError *form.InvalidDecoderError
 		if errors.As(err, &invalidDecoderError) {
+			app.errorLog.Print("####### INVALID DECODER ERROR #####")
 			panic(err)
 		}
 		// return err for all other types
