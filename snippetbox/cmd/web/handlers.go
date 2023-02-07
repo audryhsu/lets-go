@@ -51,9 +51,9 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 type snippetCreateForm struct {
-	Title               string `form:"title"`
-	Content             string `form:"content"`
-	Expires             int    `form:"expires"`
+	Title               string     `form:"title"`
+	Content             string     `form:"content"`
+	Expires             int        `form:"expires"`
 	validator.Validator `form:"-"` // anonymous Validator type; "-" means ignore field during decoding
 }
 
@@ -124,9 +124,9 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 	}
 	// validate data
 	form.CheckField(form.MinChars(form.Password, 8), "password", "Password must be at least 8 characters long")
-	form.CheckField(form.NotBlank(form.Password), "password", "Password must be at least 8 characters long")
+	form.CheckField(form.NotBlank(form.Password), "password", "Password cannot be blank")
 	form.CheckField(form.NotBlank(form.Name), "name", "name cannot be blank")
-	form.CheckField(form.NotBlank(form.Email), "password", "email cannot be blank")
+	form.CheckField(form.NotBlank(form.Email), "email", "email cannot be blank")
 	form.CheckField(form.Matches(form.Email, validator.EmailRX), "email", "email must be valid address")
 
 	if !form.Valid() {
@@ -135,15 +135,29 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 		app.render(w, http.StatusUnprocessableEntity, "signup.html", data)
 		return
 	}
-	// todo check if email already exists
 
-	// insert new user into db
+	// insert new user into db; if email already exists, re-render form with field error
+	err := app.users.Insert(form.Name, form.Email, form.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			form.AddFieldError("email", "Email address already in use")
+			data := app.NewTemplateData(r)
+			data.Form = form
+			app.render(w, http.StatusBadRequest, "signup.html", data)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
 
-	// redirect to snippet home
+	// Otherewise,add confirmation flash to session and redirect to login page
+	app.sessionManager.Put(r.Context(), "flash", "User signed up successfully")
+	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 }
 
 func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
 	fmt.Print("Show login page...")
+
 }
 
 // userLoginPost authenticates and logs in user

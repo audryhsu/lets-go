@@ -2,6 +2,10 @@ package models
 
 import (
 	"database/sql"
+	"errors"
+	"github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/bcrypt"
+	"strings"
 	"time"
 )
 
@@ -19,23 +23,34 @@ type UserModel struct {
 }
 
 // Insert adds a new record to Useres table
-func (u *UserModel) Insert(name, email, password string) (int, error) {
-	stmt := `INSERT INTO users (name, email, hash, created) VALUES(?, ?, ?, UTC_TIMESTAMP())`
+func (u *UserModel) Insert(name, email, password string) error {
+	stmt := `INSERT INTO users (name, email, hashed_password, created) VALUES(?, ?, ?, UTC_TIMESTAMP())`
 
-	// todo hash password with bcrypt
-	hash := ""
-
-	result, err := u.DB.Exec(stmt, name, email, hash)
+	// store hashed password
+	hashedPW, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
-		return 0, err
+		return err
+	}
+
+	result, err := u.DB.Exec(stmt, name, email, string(hashedPW))
+	if err != nil {
+		// check if error is mysql error, if so, check if matches duplicate error code
+		// https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_dup_entry
+		var mySQLError *mysql.MySQLError
+		if errors.As(err, &mySQLError) {
+			if mySQLError.Number == 1062 && strings.Contains(mySQLError.Message, "users_uc_email") {
+				return ErrDuplicateEmail
+			}
+		}
+		return err
 	}
 
 	// get the ID of newly inserted record
-	id, err := result.LastInsertId()
+	_, err = result.LastInsertId()
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return int(id), nil
+	return nil
 }
 
 // Authenticate verifies whether user with email and password exists. Returns userID if valid.
