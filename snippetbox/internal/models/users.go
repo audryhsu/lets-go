@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	"strings"
 	"time"
 )
@@ -22,7 +23,7 @@ type UserModel struct {
 	DB *sql.DB
 }
 
-// Insert adds a new record to Useres table
+// Insert adds a new record to Users table
 func (u *UserModel) Insert(name, email, password string) error {
 	stmt := `INSERT INTO users (name, email, hashed_password, created) VALUES(?, ?, ?, UTC_TIMESTAMP())`
 
@@ -55,7 +56,30 @@ func (u *UserModel) Insert(name, email, password string) error {
 
 // Authenticate verifies whether user with email and password exists. Returns userID if valid.
 func (u *UserModel) Authenticate(email, password string) (int, error) {
-	return 0, nil
+	var hashedPassword []byte
+	var id int
+
+	// if email doesn't exist in db, return error
+	stmt := `SELECT id, hashed_password FROM users WHERE email = ?`
+	row := u.DB.QueryRow(stmt, email)
+	err := row.Scan(&id, &hashedPassword)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Println("couldn't find email in db")
+			return 0, ErrInvalidCredentials
+		}
+		return 0, err
+	}
+
+	// if plaintext pw doesn't match hashed pw, return error
+	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(password))
+	if err != nil {
+		log.Println("badd password")
+		return 0, ErrInvalidCredentials
+	}
+
+	log.Println("auth successful!")
+	return id, nil
 }
 
 // Exists checks whether a user exists.

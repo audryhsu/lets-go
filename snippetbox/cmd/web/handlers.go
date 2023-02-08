@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"log"
 	"snippetbox.audryhsu.com/internal/models"
 	"snippetbox.audryhsu.com/internal/validator"
 	// "log"
@@ -51,9 +52,9 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 type snippetCreateForm struct {
-	Title               string     `form:"title"`
-	Content             string     `form:"content"`
-	Expires             int        `form:"expires"`
+	Title               string `form:"title"`
+	Content             string `form:"content"`
+	Expires             int    `form:"expires"`
 	validator.Validator `form:"-"` // anonymous Validator type; "-" means ignore field during decoding
 }
 
@@ -150,21 +151,81 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Otherewise,add confirmation flash to session and redirect to login page
+	// Otherwise,add confirmation flash to session and redirect to login page
 	app.sessionManager.Put(r.Context(), "flash", "User signed up successfully")
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 }
 
-func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
-	fmt.Print("Show login page...")
+// userLoginForm represents and holds the form data
+type userLoginForm struct {
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
+}
 
+// userLogin displays the login page
+func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
+	data := app.NewTemplateData(r)
+	data.Form = userLoginForm{}
+	app.render(w, http.StatusOK, "login.html", data)
 }
 
 // userLoginPost authenticates and logs in user
 func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Print("Logging in new user...")
+	var form userLoginForm
+	//err := app.formDecoder.Decode(&form, r.PostForm)
+	// same as?
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		log.Println("form decode error")
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+	// validation checks -- email and password are provided and formats are correct
+	form.CheckField(form.NotBlank(form.Email), "email", "This field cannot be blank")
+	form.CheckField(form.NotBlank(form.Password), "password", "This field field cannot be blank")
+	form.CheckField(form.Matches(form.Email, validator.EmailRX), "email", "This field must be valid email")
+
+	if !form.Valid() {
+		data := app.NewTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "login.html", data)
+		return
+	}
+
+	id, err := app.users.Authenticate(form.Email, form.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			form.AddNonFieldError("Email or password is incorrect")
+			data := app.NewTemplateData(r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "login.html", data)
+			return
+		} else {
+			app.serverError(w, err)
+			return
+		}
+	}
+	// Good practice to generate a new session ID when auth state or priv levels change for a user (e.g. login/logout)
+	err = app.sessionManager.RenewToken(r.Context())
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	// add ID of current user to session so they are 'logged in'
+	app.sessionManager.Put(r.Context(), "authenticatedUserID", id)
+	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
 }
 
+//userLogoutPost renews the session ID and removes userid from session store
 func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Print("Logging out...")
+	err := app.sessionManager.RenewToken(r.Context())
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	app.sessionManager.Remove(r.Context(), "authenticatedUserID")
+	app.sessionManager.Put(r.Context(), "flash", "Logged out successfully")
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

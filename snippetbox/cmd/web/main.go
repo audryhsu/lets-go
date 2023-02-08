@@ -39,6 +39,7 @@ func main() {
 	// Pass in the DSN from command line flag
 	db, err := openDB(*dsn)
 	if err != nil {
+		errorLog.Print("Couldn't connect to DB")
 		errorLog.Fatal(err)
 	}
 
