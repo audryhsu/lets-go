@@ -84,5 +84,8 @@ func (u *UserModel) Authenticate(email, password string) (int, error) {
 
 // Exists checks whether a user exists.
 func (u *UserModel) Exists(id int) (bool, error) {
-	return false, nil
+	stmt := "SELECT EXISTS(SELECT true FROM users WHERE id = ?)"
+	var exists bool
+	err := u.DB.QueryRow(stmt, id).Scan(&exists)
+	return exists, err
 }

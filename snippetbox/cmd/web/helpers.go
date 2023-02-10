@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-playground/form/v4"
+	"github.com/justinas/nosurf"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -63,6 +64,7 @@ func (app *application) NewTemplateData(r *http.Request) *templateData {
 		CurrentYear:     time.Now().Year(),
 		Flash:           app.sessionManager.PopString(r.Context(), "flash"), // flash message is automatically included next any page is rendered
 		IsAuthenticated: app.isAuthenticated(r),                             // add auth status to template data
+		CSRFToken:       nosurf.Token(r),                                    // add CSRF token
 	}
 }
 
@@ -90,5 +92,10 @@ func (app *application) decodePostForm(r *http.Request, dest any) error {
 
 // isAuthenticated returns true if the current request is from an auth user, otherwise return false.
 func (app *application) isAuthenticated(r *http.Request) bool {
-	return app.sessionManager.Exists(r.Context(), "authenticatedUserID")
+	isAuthenticated, ok := r.Context().Value(isAuthenticatedContextKey).(bool)
+	// if key doesn't exist in context or type conversion error
+	if !ok {
+		return false
+	}
+	return isAuthenticated
 }

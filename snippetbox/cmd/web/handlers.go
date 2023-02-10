@@ -60,8 +60,10 @@ type snippetCreateForm struct {
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
 	var form snippetCreateForm
+	log.Println("snippet create post handler!")
 
 	if err := app.decodePostForm(r, &form); err != nil {
+		log.Print("couldn't decode post form")
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
@@ -72,6 +74,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	form.CheckField(form.PermittedInt(form.Expires, 1, 7, 365), "expires", "This field must equal 1,7, or 365")
 
 	if !form.Valid() {
+		log.Println("failed form validation")
 		data := app.NewTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "create.html", data)
@@ -79,7 +82,9 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	}
 
 	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
+	log.Println("trying to insert the snippet")
 	if err != nil {
+		log.Println("couldn't insert snippet into database")
 		app.serverError(w, err)
 		return
 	}
@@ -177,7 +182,7 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 	// same as?
 	err := app.decodePostForm(r, &form)
 	if err != nil {
-		log.Println("form decode error")
+		log.Println("form decode error on user login")
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
@@ -187,6 +192,7 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 	form.CheckField(form.Matches(form.Email, validator.EmailRX), "email", "This field must be valid email")
 
 	if !form.Valid() {
+		log.Println("form failed validation")
 		data := app.NewTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "login.html", data)
@@ -217,7 +223,7 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
 }
 
-//userLogoutPost renews the session ID and removes userid from session store
+// userLogoutPost renews the session ID and removes userid from session store
 func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 	err := app.sessionManager.RenewToken(r.Context())
 	if err != nil {

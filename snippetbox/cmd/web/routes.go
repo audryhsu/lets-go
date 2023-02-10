@@ -25,9 +25,9 @@ func (app *application) routes() http.Handler {
 
 	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
 
-	// Non-auth routes use "dynamic" middleware chain
+	// Non-auth routes use "dynamic" middleware chain plus CSRF check middleware
 	// Create new middleware chain for middleware specifgic to dynamic app routes.
-	dynamic := alice.New(app.sessionManager.LoadAndSave)
+	dynamic := alice.New(app.sessionManager.LoadAndSave, app.noSurf, app.authenticate)
 
 	// httprouter package provides method-based routing, clean URLs, and more robust pattern-matching.
 	// alice ThenFunc() returns http.Handler (instead http.HandlerFunc), so switch to registering the route using router.Handler()

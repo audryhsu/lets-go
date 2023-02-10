@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/justinas/nosurf"
 	"net/http"
 )
 
@@ -60,4 +62,41 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 		// call next handler in chain
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// get authenticatedUserID from session data
+		userId := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+
+		// if don't have authenticated user, pass original request to next handler
+		if userId == 0 { // check for nil value
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// if there is an auth user ID in session data, check db to see if user id exists in database
+		if exists, err := app.users.Exists(userId); err != nil {
+			app.serverError(w, err)
+			return
+		} else if exists {
+			// update request context to include new context key indicated auth is good
+			// create a copy of the request with new context
+			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
+			r = r.WithContext(ctx)
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// noSurf middleware function creates a CSRF handler that will call the next middleware if the check passes. Check uses a customized CSRF http cookie
+func (app *application) noSurf(next http.Handler) http.Handler {
+	csrfHandler := nosurf.New(next)
+	csrfHandler.SetBaseCookie(http.Cookie{
+		HttpOnly: true,
+		Path:     "/",
+		Secure:   true,
+	})
+	return csrfHandler
 }
