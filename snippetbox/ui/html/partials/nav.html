@@ -2,12 +2,18 @@
 <nav>
     <div>
     <a href="/">Home</a>
+<!--        toggle link based on auth status -->
+        {{if .IsAuthenticated}}
     <a href="/snippet/create">Create a Snippet</a>
+        {{end}}
     </div>
     <div>
+        {{if .IsAuthenticated}}
+        <form action="/user/logout" method="POST"><button>Logout</button></form>
+        {{ else }}
         <a href="/user/signup">Sign up</a>
         <a href="/user/login">Login</a>
-        <form action="/user/logout" method="POST"><button>Logout</button></form>
+        {{end}}
     </div>
 </nav>
 {{end}}

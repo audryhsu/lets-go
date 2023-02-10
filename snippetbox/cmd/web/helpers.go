@@ -19,8 +19,8 @@ func (app *application) serverError(w http.ResponseWriter, err error) {
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
-// helper sends a specific status code and corresponding description to the user.
 // ex: 400 "Bad Request" when there's a problem with user request.
+// clientError sends a specific status code and corresponding description to the user.
 func (app *application) clientError(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
@@ -35,8 +35,7 @@ func (app *application) methodNotAllowed(w http.ResponseWriter) {
 	app.clientError(w, http.StatusMethodNotAllowed)
 }
 
-// render method will retrieve appropriate template set from cache based on page (e.g. home.html)
-// If no entry exists in cache with name, create a new error and call serverError()
+// render method will retrieve appropriate template set from cache based on page (e.g. home.html). If no entry exists in cache with name, create a new error and call serverError()
 func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {
 	ts, ok := app.templateCache[page]
 	if !ok {
@@ -61,8 +60,9 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 
 func (app *application) NewTemplateData(r *http.Request) *templateData {
 	return &templateData{
-		CurrentYear: time.Now().Year(),
-		Flash:       app.sessionManager.PopString(r.Context(), "flash"), // flash message is automatically included next any page is rendered
+		CurrentYear:     time.Now().Year(),
+		Flash:           app.sessionManager.PopString(r.Context(), "flash"), // flash message is automatically included next any page is rendered
+		IsAuthenticated: app.isAuthenticated(r),                             // add auth status to template data
 	}
 }
 
@@ -86,4 +86,9 @@ func (app *application) decodePostForm(r *http.Request, dest any) error {
 		return err
 	}
 	return nil
+}
+
+// isAuthenticated returns true if the current request is from an auth user, otherwise return false.
+func (app *application) isAuthenticated(r *http.Request) bool {
+	return app.sessionManager.Exists(r.Context(), "authenticatedUserID")
 }
