@@ -52,9 +52,9 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 type snippetCreateForm struct {
-	Title               string `form:"title"`
-	Content             string `form:"content"`
-	Expires             int    `form:"expires"`
+	Title               string     `form:"title"`
+	Content             string     `form:"content"`
+	Expires             int        `form:"expires"`
 	validator.Validator `form:"-"` // anonymous Validator type; "-" means ignore field during decoding
 }
 
@@ -71,7 +71,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	form.CheckField(form.NotBlank(form.Title), "title", "This field cannot be blank")
 	form.CheckField(form.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
 	form.CheckField(form.NotBlank(form.Content), "content", "This field cannot be blank")
-	form.CheckField(form.PermittedInt(form.Expires, 1, 7, 365), "expires", "This field must equal 1,7, or 365")
+	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "This field must equal 1,7, or 365")
 
 	if !form.Valid() {
 		log.Println("failed form validation")

@@ -61,6 +61,16 @@ func (v *Validator) PermittedInt(value int, permittedValues ...int) bool {
 	return false
 }
 
+// PermittedValue is a generic function that checks if a value exists in a slice of permitted values. This replaces the Validator.PermittedInt() method.
+func PermittedValue[T comparable](value T, permittedValues ...T) bool {
+	for _, permittedValue := range permittedValues {
+		if value == permittedValue {
+			return true
+		}
+	}
+	return false
+}
+
 // MinChars returns true if value is at least n characters
 func (v *Validator) MinChars(value string, n int) bool {
 	return utf8.RuneCountInString(value) >= n

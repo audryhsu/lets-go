@@ -2,8 +2,10 @@ package main
 
 import (
 	"html/template"
+	"io/fs"
 	"path/filepath"
 	"snippetbox.audryhsu.com/internal/models"
+	"snippetbox.audryhsu.com/ui"
 	"time"
 )
 
@@ -33,8 +35,8 @@ func NewTemplateCache() (map[string]*template.Template, error) {
 	// initialize new map
 	cache := map[string]*template.Template{}
 
-	// Get slice of all filepaths that match pattern "./ui/html/pages/*.html"
-	pages, err := filepath.Glob("./ui/html/pages/*.html")
+	// Use fs.Glob to get slice of all filepaths in ui.Files embedded fs that match the pattern "./ui/html/pages/*.html" (e.g. all of the "page" templates)
+	pages, err := fs.Glob(ui.Files, "html/pages/*.html")
 	if err != nil {
 		return nil, err
 	}
@@ -42,18 +44,14 @@ func NewTemplateCache() (map[string]*template.Template, error) {
 		// extract file name (home.html) from full filepath of page
 		name := filepath.Base(page)
 
-		// Create a new blank template, then register template.FuncMap before parsing base template into template set
-		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/base.html")
-		if err != nil {
-			return nil, err
+		// create slice containing filepath patterns for templates we want to parse.
+		patterns := []string{
+			"html/base.html",
+			"html/partials/*.html",
+			page,
 		}
-		// call ParseGlob() on THIS template set to add any partials
-		ts, err = ts.ParseGlob("./ui/html/partials/*.html")
-		if err != nil {
-			return nil, err
-		}
-		// add page to this template set
-		ts, err = ts.ParseFiles(page)
+		// use ParseFS() instead of ParseFiles() to parse the template files from ui.Files embedded fs
+		ts, err := template.New(name).Funcs(functions).ParseFS(ui.Files, patterns...)
 		if err != nil {
 			return nil, err
 		}

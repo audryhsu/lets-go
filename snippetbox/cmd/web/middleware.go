@@ -50,6 +50,7 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
+// requireAuthentication is a middleware function that redirects to login page if request is from non-auth user.
 func (app *application) requireAuthentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// if not authenticated, redirect
@@ -64,6 +65,7 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 	})
 }
 
+// authenticate is middleware that authenticates a user request by checking if the `authenticatedUserID` is in the session store and a valid user id in the users table. If so, it updates the isAuthenticatedContextKey to `true`.
 func (app *application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get authenticatedUserID from session data

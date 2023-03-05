@@ -4,6 +4,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/justinas/alice"
 	"net/http"
+	"snippetbox.audryhsu.com/ui"
 )
 
 // Update signature of routes() method so it returns a http.Handler instead of *http.ServeMux
@@ -18,15 +19,13 @@ func (app *application) routes() http.Handler {
 	router.MethodNotAllowed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app.methodNotAllowed(w)
 	})
-	// Create a file server to serve files out of "./ui/static".
-	// Path given to http.Dir() is relative to project root.
-	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	// Register file server as handler for all URL paths that start w/ "static". To match paths, strip "/static" prefix before request reaches file server.
+	// convert ui.Files embedded filesystem and convert it to a http.FS type to satisfy the http.FileSystem interface and create  file server handler.
+	fileServer := http.FileServer(http.FS(ui.Files))
 
-	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
+	// Static files are now contained in "static" folder of ui.Files embedded filesystem, so we no longer need to strip the prefix from the request URL. Any requests that start with /static/ can be passed directly to file server. ("static/css/main.css")
+	router.Handler(http.MethodGet, "/static/*filepath", fileServer)
 
 	// Non-auth routes use "dynamic" middleware chain plus CSRF check middleware
-	// Create new middleware chain for middleware specifgic to dynamic app routes.
 	dynamic := alice.New(app.sessionManager.LoadAndSave, app.noSurf, app.authenticate)
 
 	// httprouter package provides method-based routing, clean URLs, and more robust pattern-matching.
