@@ -25,6 +25,9 @@ func (app *application) routes() http.Handler {
 	// Static files are now contained in "static" folder of ui.Files embedded filesystem, so we no longer need to strip the prefix from the request URL. Any requests that start with /static/ can be passed directly to file server. ("static/css/main.css")
 	router.Handler(http.MethodGet, "/static/*filepath", fileServer)
 
+	// add /ping route
+	router.HandlerFunc(http.MethodGet, "/ping", ping)
+
 	// Non-auth routes use "dynamic" middleware chain plus CSRF check middleware
 	dynamic := alice.New(app.sessionManager.LoadAndSave, app.noSurf, app.authenticate)
 
