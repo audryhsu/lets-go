@@ -2,12 +2,74 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"snippetbox.audryhsu.com/internal/assert"
 	"testing"
 )
+
+func TestSnippetView(t *testing.T) {
+	// test that GET requests to "/snippet/view/1" return 200 ok and req body contains expected content
+	// GET requests to any other route return 404 not found
+	app := newTestApplication(t)
+	ts := newTestServer(t, app.routes())
+	defer ts.Close()
+
+	url := urlFormatter("/snippet/view")
+
+	tests := []struct {
+		name     string
+		urlPath  string
+		wantCode int
+		wantBody string
+	}{
+		{
+			name:     "Valid ID",
+			urlPath:  url("1"),
+			wantCode: http.StatusOK,
+			wantBody: "An old silent pond...",
+		},
+		{
+			name:     "Non-existent ID",
+			urlPath:  url("509"),
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name:     "Negative ID",
+			urlPath:  url("-1"),
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name:     "String ID",
+			urlPath:  url("foo"),
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name:     "empty id",
+			urlPath:  url(""),
+			wantCode: http.StatusNotFound,
+		},
+	}
+
+	for _, c := range tests {
+		t.Run(c.name, func(t *testing.T) {
+			code, _, body := ts.get(t, c.urlPath)
+			assert.Equal(t, code, c.wantCode)
+			if c.wantBody != "" {
+				mockSnippet, _ := app.snippets.Get(1)
+				assert.StringContains(t, body, mockSnippet.Content)
+			}
+		})
+	}
+}
+
+func urlFormatter(baseURL string) func(string) string {
+	return func(param string) string {
+		return fmt.Sprintf("%s/%s", baseURL, param)
+	}
+}
 
 // end to end testing that uses testutils package for set up
 func TestPing(t *testing.T) {

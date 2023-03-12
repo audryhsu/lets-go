@@ -15,6 +15,13 @@ type Snippet struct {
 	Expires time.Time
 }
 
+// SnippetModelInterface describes the methods that our SnippetModel struct has; created so that our application can expect a type that implements this interface, including our mock.SnippetModel!
+type SnippetModelInterface interface {
+	Insert(title, content string, expires int) (int, error)
+	Get(id int) (*Snippet, error)
+	Latest() ([]*Snippet, error)
+}
+
 // SnippetModel Define a SnippetModel type which wraps a sql.DB connection pool
 type SnippetModel struct {
 	DB *sql.DB
