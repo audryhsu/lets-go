@@ -7,7 +7,7 @@ import (
 	"snippetbox.audryhsu.com/ui"
 )
 
-// Update signature of routes() method so it returns a http.Handler instead of *http.ServeMux
+// Update signature of routes() method, so it returns a http.Handler instead of *http.ServeMux
 // The routes() method returns a http.Handler containing the application router.
 func (app *application) routes() http.Handler {
 	router := httprouter.New()
@@ -34,6 +34,7 @@ func (app *application) routes() http.Handler {
 	// httprouter package provides method-based routing, clean URLs, and more robust pattern-matching.
 	// alice ThenFunc() returns http.Handler (instead http.HandlerFunc), so switch to registering the route using router.Handler()
 	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
+	router.Handler(http.MethodGet, "/about", dynamic.ThenFunc(app.about))
 	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippetView))
 
 	router.Handler(http.MethodPost, "/user/signup", dynamic.ThenFunc(app.userSignupPost))

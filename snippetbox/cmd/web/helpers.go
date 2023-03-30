@@ -16,6 +16,12 @@ func (app *application) serverError(w http.ResponseWriter, err error) {
 	trace := fmt.Sprintf("%s\n%s", err.Error(), debug.Stack())
 	app.errorLog.Output(2, trace)
 
+	// in debug mode, show user the entire error stack trace in browser
+	if *app.debugMode {
+		http.Error(w, trace, http.StatusInternalServerError)
+		return
+	}
+
 	// replies to request with HTTP code and message
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
@@ -59,6 +65,7 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 	buf.WriteTo(w)
 }
 
+// NewTemplateData returns a templateData with information about whether a user is authenticated and stores the CSRF token from the http request.
 func (app *application) NewTemplateData(r *http.Request) *templateData {
 	return &templateData{
 		CurrentYear:     time.Now().Year(),
