@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
+	"html"
 	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
+	"regexp"
 	"snippetbox.audryhsu.com/internal/models/mocks"
 	"testing"
 	"time"
@@ -79,4 +82,33 @@ func (ts *testServer) get(t *testing.T, urlPath string) (statusCode int, headers
 	}
 	bytes.TrimSpace(bytebody)
 	return res.StatusCode, res.Header, string(bytebody)
+}
+
+// postForm method sends POST requests to test server. url.Values object can contain any form data that you want to send in the request body.
+func (ts *testServer) postForm(t *testing.T, urlPath string, form url.Values) (int, http.Header, string) {
+	rs, err := ts.Client().PostForm(ts.URL+urlPath, form)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// read the response body from teh test server
+	defer rs.Body.Close()
+	body, err := io.ReadAll(rs.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bytes.TrimSpace(body)
+	return rs.StatusCode, rs.Header, string(body)
+}
+
+// regular expression which captures the CSRF token value from the HTML for user sign up
+var csrfTokenRX = regexp.MustCompile(`<input type='hidden' name='csrf_token' value='(.+)'>`)
+
+func extractCSRFToken(t *testing.T, body string) string {
+	// extract token from HTML body. Returns an array with entire matched pattern at i[0], and values of any captured data in subsequent positions
+	matches := csrfTokenRX.FindStringSubmatch(body)
+	if len(matches) < 2 {
+		t.Fatal("no csrf token found in body")
+	}
+	return html.UnescapeString(string(matches[1]))
 }
