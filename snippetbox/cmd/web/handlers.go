@@ -239,3 +239,9 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 func ping(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("OK"))
 }
+
+// about displays the about page
+func (app *application) about(w http.ResponseWriter, r *http.Request) {
+	data := app.NewTemplateData(r)
+	app.render(w, http.StatusOK, "about.html", data)
+}
