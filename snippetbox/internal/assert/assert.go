@@ -11,7 +11,7 @@ func Equal[T comparable](t *testing.T, actual T, expected T) {
 	t.Helper()
 
 	if actual != expected {
-		t.Errorf("actual %q, expected %q", actual, expected)
+		t.Errorf("actual %v, expected %v", actual, expected)
 	}
 }
 
